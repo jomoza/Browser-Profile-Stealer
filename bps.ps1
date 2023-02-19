@@ -1,7 +1,7 @@
 
 <#
 
-    HiFox.ps1
+    BPS.ps1
     Author: J. Moreno @j0moz4 
     License: BSD 3-Clause
     Required Dependencies: None
